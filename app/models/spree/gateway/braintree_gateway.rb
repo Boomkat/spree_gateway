@@ -38,6 +38,11 @@ module Spree
     def authorize(money, creditcard, options = {})
       adjust_options_for_braintree(creditcard, options)
 
+      puts "--------------------------------------"
+      puts creditcard
+      puts options
+      puts "--------------------------------------"
+
       if creditcard.gateway_payment_profile_id
         payment_method = creditcard.gateway_payment_profile_id
         options[:payment_method_token] = true
@@ -53,8 +58,24 @@ module Spree
     end
 
     def create_profile(payment)
+      return unless payment.source.gateway_customer_profile_id.nil?
+
+      options = options_for_payment(payment)
+
+
+      if payment.source.gateway_payment_profile_id.present?
+        options[:payment_method_nonce] = payment.source.gateway_payment_profile_id
+      end
+
+      puts "--------------------------------------"
+      puts "CREATE PROFILE"
+      puts "--------------------------------------"
+      puts options
+      puts "--------------------------------------"
+      puts provider_class
+
       if payment.source.gateway_customer_profile_id.nil? && payment.source.number.present?
-        response = provider.store(payment.source, options_for_payment(payment))
+        response = provider.store(payment.source, options)
 
         if response.success?
           payment.source.update!(:gateway_customer_profile_id => response.params['customer_vault_id'])
@@ -136,6 +157,11 @@ module Spree
       else
         provider.refund(response_code)
       end
+    end
+
+    def client_token
+      pp provider.methods
+      provider.generate_client_token
     end
 
     protected
