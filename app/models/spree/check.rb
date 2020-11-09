@@ -5,7 +5,7 @@ module Spree
 
     belongs_to :payment_method
     belongs_to :user, class_name: Spree.user_class.to_s, foreign_key: 'user_id',
-               optional: true
+               required: false
     has_many :payments, as: :source
 
     scope :with_payment_profile, -> { where.not(gateway_customer_profile_id: nil) }
