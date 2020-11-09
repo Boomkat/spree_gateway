@@ -4,8 +4,7 @@ module Spree
     attr_accessor :imported
 
     belongs_to :payment_method
-    belongs_to :user, class_name: Spree.user_class.to_s, foreign_key: 'user_id',
-               required: false
+    belongs_to :user, class_name: Spree.user_class.to_s, foreign_key: 'user_id'
     has_many :payments, as: :source
 
     scope :with_payment_profile, -> { where.not(gateway_customer_profile_id: nil) }
