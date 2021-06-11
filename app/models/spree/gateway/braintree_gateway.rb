@@ -38,19 +38,18 @@ module Spree
     def authorize(money, creditcard, options = {})
       adjust_options_for_braintree(creditcard, options)
 
-      puts "--------------------------------------"
-      puts creditcard
-      puts options
-      puts "--------------------------------------"
-
-      if creditcard.gateway_payment_profile_id
-        payment_method = creditcard.gateway_payment_profile_id
-        options[:payment_method_token] = true
-      else
-        payment_method = creditcard.gateway_customer_profile_id || creditcard
+      if creditcard.gateway_payment_profile_id.present?
+        options[:payment_method_nonce] = creditcard.gateway_payment_profile_id
       end
 
-      provider.authorize(money, payment_method, options)
+      result = provider.authorize(money, nil, options)
+
+      creditcard.update_attributes(
+        gateway_payment_profile_id: result.params['credit_card_token'] || creditcard.payments.first.try(:identifier),
+        gateway_customer_profile_id: result.params['customer_vault_id']
+      ) if result.success?
+
+      result
     end
 
     def capture(amount, authorization_code, ignored_options = {})
@@ -61,18 +60,6 @@ module Spree
       return unless payment.source.gateway_customer_profile_id.nil?
 
       options = options_for_payment(payment)
-
-
-      if payment.source.gateway_payment_profile_id.present?
-        options[:payment_method_nonce] = payment.source.gateway_payment_profile_id
-      end
-
-      puts "--------------------------------------"
-      puts "CREATE PROFILE"
-      puts "--------------------------------------"
-      puts options
-      puts "--------------------------------------"
-      puts provider_class
 
       if payment.source.gateway_customer_profile_id.nil? && payment.source.number.present?
         response = provider.store(payment.source, options)
@@ -125,7 +112,9 @@ module Spree
     end
 
     def payment_profiles_supported?
-      true
+      # NOTE: To adopt 3DSv2 on Transaction#sale instead of payment cards,
+      #  the Payment Profiles have to be created AFTER the sale.
+      false
     end
 
     def purchase(money, creditcard, options = {})
@@ -170,6 +159,7 @@ module Spree
         if creditcard.gateway_customer_profile_id
           options.delete(:billing_address)
         end
+        options[:store] = true
       end
 
       def adjust_options_for_braintree(creditcard, options)
@@ -179,10 +169,6 @@ module Spree
       def options_for_payment(p)
         o = Hash.new
         o[:email] = p.order.email
-
-        if p.source.gateway_customer_profile_id.present?
-          o[:customer] = p.source.gateway_customer_profile_id
-        end
 
         if p.order.bill_address
           bill_addr = p.order.bill_address
@@ -199,9 +185,21 @@ module Spree
             country_code_alpha3: bill_addr.country.iso3,
             zip: bill_addr.zipcode
           }
+
+          o[:customer] = {
+            first_name: bill_addr.firstname,
+            last_name: bill_addr.lastname,
+            email: p.order.email,
+          }
         end
 
+        o[:options] = {
+          :verify_card => "true",
+          :store_in_vault => "true"
+        }
+
         o[:verify_card] = "true"
+        o[:store] = "true"
 
         return o
       end
