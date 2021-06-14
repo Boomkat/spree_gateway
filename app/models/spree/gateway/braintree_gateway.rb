@@ -163,6 +163,12 @@ module Spree
         if creditcard.gateway_customer_profile_id
           options.delete(:billing_address)
         end
+
+        if payment = creditcard.payments.first
+          options[:first_name] = payment.order.bill_address.firstname
+          options[:last_name] = payment.order.bill_address.lastname
+        end
+
         options[:store] = true
       end
 
