@@ -38,8 +38,12 @@ module Spree
     def authorize(money, creditcard, options = {})
       adjust_options_for_braintree(creditcard, options)
 
-      if creditcard.gateway_payment_profile_id.present?
+      if creditcard.gateway_payment_profile_id.present? && creditcard.created_at > 2.minutes.ago
         options[:payment_method_nonce] = creditcard.gateway_payment_profile_id
+      end
+
+      if creditcard.gateway_payment_profile_id.present? && creditcard.created_at < 2.minutes.ago
+        options[:payment_method_token] = creditcard.gateway_payment_profile_id
       end
 
       result = provider.authorize(money, nil, options)
