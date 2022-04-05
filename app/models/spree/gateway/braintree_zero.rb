@@ -53,7 +53,6 @@ module Spree
     end
 
     def create_profile(payment)
-      puts "!!!!!"
       return unless payment.source.gateway_customer_profile_id.nil?
       options = {
         email: payment.order.email,

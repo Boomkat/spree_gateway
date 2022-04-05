@@ -44,6 +44,7 @@ module Spree
 
       if creditcard.gateway_payment_profile_id.present? && creditcard.created_at < 2.minutes.ago
         options[:payment_method_token] = creditcard.gateway_payment_profile_id
+        options[:payment_method_nonce] = creditcard.verification_value
       end
 
       result = provider.authorize(money, nil, options)
@@ -153,8 +154,11 @@ module Spree
     end
 
     def client_token
-      pp provider.methods
       provider.generate_client_token
+    end
+
+    def noncify(token)
+      provider.generate_nonce(token)
     end
 
     protected
