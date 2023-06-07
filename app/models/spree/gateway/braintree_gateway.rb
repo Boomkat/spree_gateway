@@ -153,8 +153,8 @@ module Spree
       end
     end
 
-    def client_token
-      provider.generate_client_token
+    def client_token(client_token = nil)
+      provider.generate_client_token(client_token)
     end
 
     def noncify(token)
