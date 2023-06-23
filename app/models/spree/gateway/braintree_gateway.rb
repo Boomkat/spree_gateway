@@ -36,7 +36,7 @@ module Spree
     end
 
     def authorize(money, creditcard, options = {})
-      adjust_options_for_braintree(creditcard, options)
+      options = adjust_options_for_braintree(creditcard, options)
 
       if creditcard.gateway_payment_profile_id.present? && creditcard.created_at > 2.minutes.ago
         options[:payment_method_nonce] = creditcard.gateway_payment_profile_id
@@ -174,6 +174,15 @@ module Spree
         end
 
         options[:store] = true
+
+        # NOTE: Discover cards do not support 3DSv2
+        if creditcard.cc_type.downcase.include?('discover')
+          options[:three_d_secure] = {
+            required: false
+          }
+        end
+
+        options
       end
 
       def adjust_options_for_braintree(creditcard, options)
